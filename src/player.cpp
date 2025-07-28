@@ -1,7 +1,10 @@
 #include "player.h"
 
 float velocity = 0.0f;
+bool isGrounded = false;
 
+// Axis Aligned Bounding Box collision detection 
+// https://en.wikipedia.org/wiki/Axis-aligned_bounding_box#Intersection_test
 bool AABB(Rectangle a, Rectangle b);
 
 Player::Player(Vector2 position, float speed)
@@ -13,18 +16,18 @@ Player::Player(Vector2 position, float speed)
 
 void Player::Update(Camera2D &camera, World &world)
 {
-
-    // Delta time
     float deltaTime = GetFrameTime();
 
-    //input check
-    if (IsKeyDown(KEY_SPACE) && velocity == 0.0f)
+    float lastPosX = position.x;
+    float lastPosY = position.y;
+
+    // Input check for jump
+    if (IsKeyDown(KEY_SPACE) && isGrounded && velocity == 0.0f) // isGrounded can be removed if i want it to be sticky on top
     {
         velocity = -GRAVITY * 0.7f;
     }
 
-    float lastPos = position.x;
-
+    // Horizontal movement input
     if (IsKeyDown(KEY_RIGHT))
     {
         position.x += speed * deltaTime;
@@ -34,74 +37,63 @@ void Player::Update(Camera2D &camera, World &world)
         position.x -= speed * deltaTime;
     }
 
-    // Needed for Y axis
+    // Gravity and vertical velocity update
     float acceleration = GRAVITY;
-    // Velocity: something like m/s^2
     velocity += acceleration * deltaTime;
+    position.y += velocity * deltaTime;
 
-    this->position.y += velocity * deltaTime;
+    Rectangle hitboxY = hitbox;
+    hitboxY.y = position.y;
 
-    // Y axis check
-    hitbox.y = position.y;
+    Rectangle hitboxX = hitbox;
+    hitboxX.x = position.x;
 
+    // Unified collision loop
     for (int i = 0; i < world.width; i++)
     {
         for (int j = 0; j < world.height; j++)
         {
-            if (world.tileMap[i][j] == World::SOLID)
-            {
+           if (world.tileMap[i][j] != World::SOLID) continue;
 
-                if (AABB(this->hitbox, (Rectangle){j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE}))
+            Rectangle tileRect = { j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+
+            // --- Y Collision ---
+            //Rectangle tempHitboxY = hitbox;
+            //tempHitboxY.y = position.y;
+
+            // Y axis collision
+            if (AABB(hitboxY, tileRect)) {
+                if (velocity > 0.0f)  // Falling
                 {
-
-                    if (velocity > 0.0f) // Falling
-                    {
-                        this->position.y = i * TILE_SIZE - TILE_SIZE;
-                        velocity = 0.0f;
-                    }
-                    else if (velocity < 0.0f) // I believe i can fly
-                    {
-                        this->position.y = i * TILE_SIZE + TILE_SIZE;
-                        velocity = 0.0f;
-                    }
-
-                    hitbox.y = position.y;
+                    position.y = tileRect.y - TILE_SIZE;
+                    isGrounded = true;
+                } else if (velocity < 0.0f)  // Jumping
+                { 
+                    isGrounded = false;
+                    position.y = tileRect.y + TILE_SIZE;
                 }
+                velocity = 0.0f;
+                hitboxY.y = position.y; 
+            }
+
+            // X axis collision
+            if (AABB(hitboxX, tileRect)) {
+                if (position.x > lastPosX)  // Moving right
+                {
+                    position.x = tileRect.x - TILE_SIZE;
+                } else if (position.x < lastPosX)  // Moving left
+                {
+                    position.x = tileRect.x + TILE_SIZE;
+                }
+                hitboxX.x = position.x;
             }
         }
     }
 
-    // X axis check
-    hitbox.x = position.x;
-
-    for (int i = 0; i < world.width; i++)
-    {
-        for (int j = 0; j < world.height; j++)
-        {
-            if (world.tileMap[i][j] == World::SOLID)
-            {
-
-                if (AABB(this->hitbox, (Rectangle){j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE}))
-                {
-
-                    if (position.x > lastPos) // Left
-                    {
-                        this->position.x = j * TILE_SIZE - TILE_SIZE;
-                    }
-                    else if (position.x < lastPos) // Right
-                    {
-                        this->position.x = j * TILE_SIZE + TILE_SIZE;
-                    }
-
-                    hitbox.x = position.x;
-                }
-            }
-        }
-    }
-    //Always following player, will add a better camera movement
+    // Camera follow player
     camera.target.x = position.x + GetScreenWidth() - TILE_SIZE;
 
-    // Update hitbox position
+    // Final hitbox update
     hitbox.x = position.x;
     hitbox.y = position.y;
 }
