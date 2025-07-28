@@ -1,15 +1,18 @@
 #include "world.h"
 
-World::World(int width, int height) : width(width), height(height) {
+World::World(int width, int height) : width(width), height(height)
+{
     // Initialize world
-}   
+}
 
-void World::Update() {
+void World::Update()
+{
     // Update world state
 }
 
-void World::Draw() {
-    
+void World::Draw()
+{
+
     for (int i = 0; i < width; i++)
     {
         for (int j = 0; j < height; j++)
@@ -28,5 +31,4 @@ void World::Draw() {
             }
         }
     }
-    
 }

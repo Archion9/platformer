@@ -4,10 +4,11 @@
 #include "include.h"
 #include "world.h"
 
-class Player {
+class Player
+{
 public:
     Player(Vector2 position, float speed);
-    void Update(Camera2D& camera, World& world);
+    void Update(Camera2D &camera, World &world);
     void Draw();
     Vector2 GetPosition() const { return position; }
 
